@@ -72,7 +72,7 @@ internal static partial class Program
         var assembly = typeof(App).Assembly;
         var tempBindings = Path.Combine(Path.GetTempPath(), $"keyboard-focus-{Guid.NewGuid():N}.json");
         var bindingsType = assembly.GetType("IPhoneMirror.App.Services.DeviceBindingManager", true)!;
-        var bindings = Activator.CreateInstance(bindingsType, KeyboardTestMembers, null, [tempBindings], null)!;
+        var bindings = Activator.CreateInstance(bindingsType, KeyboardTestMembers, null, [tempBindings, false], null)!;
         KeyboardCall(bindings, "CreateProfileFromIdentity", "Keyboard test",
             Enum.Parse(assembly.GetType("IPhoneMirror.App.Services.DeviceIdentityType")!, "Wired"), udid, null);
         var resolverType = assembly.GetType("IPhoneMirror.App.Services.DeviceIdentityResolver", true)!;

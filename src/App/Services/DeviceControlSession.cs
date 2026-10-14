@@ -22,6 +22,7 @@ internal sealed class DeviceControlSession(string deviceUdid)
     internal bool Starting;
     internal bool RequestedWireless;
     internal bool Stopping;
+    internal bool WiredFailureCancelled;
     internal bool Failed;
     internal string Status = LocalizationService.Get("UsbControlOff");
     internal readonly SingleFlightOperation WiredOperation = new();

@@ -675,6 +675,7 @@ internal sealed class NativePreviewWindow : IDisposable
             Log("independent_window_fullscreen",
                 ("mode", WindowMode), ("enabled", false));
             FullScreenChanged?.Invoke(false);
+            ReconcileFullScreenInputFocus();
             return;
         }
 
@@ -698,6 +699,19 @@ internal sealed class NativePreviewWindow : IDisposable
         Log("independent_window_fullscreen",
             ("mode", WindowMode), ("enabled", true));
         FullScreenChanged?.Invoke(true);
+        ReconcileFullScreenInputFocus();
+    }
+
+    private void ReconcileFullScreenInputFocus()
+    {
+        // Style changes and context-menu dismissal can suspend input without
+        // another WM_ACTIVATE when this HWND is already the foreground window.
+        // Recheck after those messages drain; never borrow another app's focus.
+        _source.Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+        {
+            if (!_disposed && _handle != 0)
+                ActivationChanged?.Invoke(_inputForegroundWindow() == _handle);
+        });
     }
 
     private void ApplyApplicationIcons()

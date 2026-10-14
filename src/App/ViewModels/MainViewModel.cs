@@ -2680,23 +2680,21 @@ internal sealed partial class MainViewModel : INotifyPropertyChanged
                 // timeouts; let the user see the failure instead.
                 if (bridgeEvent.EventName == "error" && bridgeEvent.Code == "direct_hid_recovery_exhausted")
                 {
+                    if (control.Stopping || (!control.WiredEnabled && !control.Starting)) return;
                     control.WiredEnabled = control.WiredConnected = false;
                     control.Failed = true;
                     control.Router.Stop();
                     var recoveryMessage = LocalizationService.Get("UsbControlFailureRecoveryExhausted");
+                    if (!control.Starting)
+                    {
+                        _ = CompleteFailedUsbBridgeAsync(control, bridge, device, recoveryMessage,
+                            $"{bridgeEvent.Code}: {bridgeEvent.Message}");
+                        return;
+                    }
                     control.ControlStatus.Failed(ControlStatusMode.Usb, device.Name,
                         recoveryMessage, bridgeEvent.Message);
                     control.Status = LocalizationService.Format("ReverseControlUsbFailedFormat", recoveryMessage);
                     NotifyUsbControlStateChanged();
-                    if (!control.Starting)
-                    {
-                        control.WiredBridge = null;
-                        control.WiredTarget = null;
-                        _ = DisposeFailedUsbBridgeAsync(bridge);
-                        ShowDeviceControlError(control, LocalizationService.Get("ReverseControlTransportWired"),
-                            recoveryMessage, "ReverseControlRecoveryErrorTitle",
-                            $"{bridgeEvent.Code}: {bridgeEvent.Message}");
-                    }
                     return;
                 }
                 if (bridgeEvent.EventName is not ("error" or "status") ||
@@ -2711,6 +2709,35 @@ internal sealed partial class MainViewModel : INotifyPropertyChanged
                 _ = RecoverUsbControlAsync(control);
             }));
         };
+    }
+
+    private async Task CompleteFailedUsbBridgeAsync(DeviceControlSession control,
+        UsbTouchBridgeHost bridge, DeviceViewModel device, string message, string? technical)
+    {
+        // Retry must not open a new capture-mux client while the old process
+        // still owns its sockets. Capture shutdown joins this same cleanup.
+        control.Stopping = true;
+        control.WiredFailureCancelled = false;
+        control.WiredBridge = null;
+        control.WiredTarget = null;
+        control.Status = LocalizationService.Get("ReverseControlUsbStopping");
+        NotifyUsbControlStateChanged();
+        try { await control.StopOperation.RunAsync(_ => DisposeFailedUsbBridgeAsync(bridge)); }
+        finally { control.Stopping = false; }
+        if (_disposed) return;
+        if (control.WiredFailureCancelled)
+        {
+            control.Failed = false;
+            control.Status = LocalizationService.Get("ReverseControlUsbOff");
+            control.ControlStatus.Cancelled(ControlStatusMode.Usb, device.Name);
+            NotifyUsbControlStateChanged();
+            return;
+        }
+        control.ControlStatus.Failed(ControlStatusMode.Usb, device.Name, message, technical);
+        control.Status = LocalizationService.Format("ReverseControlUsbFailedFormat", message);
+        NotifyUsbControlStateChanged();
+        ShowDeviceControlError(control, LocalizationService.Get("ReverseControlTransportWired"),
+            message, "ReverseControlRecoveryErrorTitle", technical);
     }
 
     private static async Task DisposeFailedUsbBridgeAsync(UsbTouchBridgeHost bridge)
@@ -3012,8 +3039,13 @@ internal sealed partial class MainViewModel : INotifyPropertyChanged
             DiagnosticLogger.ReverseControl(mode, "bridge_event", fields);
     }
 
-    private Task DisableUsbControlAsync(DeviceControlSession control) =>
-        control.StopOperation.RunAsync(_ => DisableUsbControlCoreAsync(control));
+    private Task DisableUsbControlAsync(DeviceControlSession control)
+    {
+        // A user stop can join terminal bridge cleanup. Preserve its intent
+        // even when SingleFlight does not invoke another stop delegate.
+        control.WiredFailureCancelled = true;
+        return control.StopOperation.RunAsync(_ => DisableUsbControlCoreAsync(control));
+    }
 
     private async Task DisableUsbControlCoreAsync(DeviceControlSession control)
     {

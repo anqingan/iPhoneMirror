@@ -28,6 +28,8 @@ internal static partial class Program
     {
         try
         {
+            if (args is ["--ipad-control-regressions"])
+                return RunIpadControlRegressions();
             if (args is ["--device-control-live", var liveBridge, var liveUdid, var liveMode])
                 return RunDeviceControlLive(liveBridge, liveUdid, liveMode);
             if (args is ["--device-control-hold-live", var holdBridge, var holdUdid, var holdMode, var holdSeconds])
