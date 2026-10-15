@@ -2,6 +2,8 @@
 
 The mirroring toolbar now includes **Transfer text and files**. This opens a temporary transfer window. Choose the computer's private IPv4 address on the same LAN as the iPad and click **Start / reconnect**. Paste the connection link into Safari on the iPad. The link's fragment supplies the six-digit pairing code; the page removes it from the address bar after reading it. Alternatively, enter the code shown on the computer.
 
+The transfer window has its own taskbar entry and stays visible when the main window is minimized or hidden to the tray. Opening it again from the toolbar restores the existing window if minimized and preserves the current session. Closing the transfer window or exiting the application stops the session.
+
 On the iPad page, paste copied text into **Send to computer** and click **Send text**. The computer displays the received text and, by default, copies it to its clipboard. Automatic clipboard writes preserve a newer local copy and retry when the Windows clipboard is temporarily busy; **Copy received text** is available as a manual fallback.
 
 In the other direction, type text in the computer window or explicitly read its clipboard, then click **Share this text**. Refresh the iPad page to receive it. The page offers a Copy button, with manual text selection as a fallback when Safari restricts clipboard access on a local HTTP page.

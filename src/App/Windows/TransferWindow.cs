@@ -30,16 +30,16 @@ internal sealed class TransferWindow : Window
     private Task? _stop;
     private static string L(string key) => LocalizationService.Get(key);
 
-    internal TransferWindow(Window? owner)
+    internal TransferWindow()
     {
-        Owner = owner;
         _textSync = new ClipboardSyncState(text => Clipboard.SetDataObject(text, true), GetClipboardSequenceNumber,
             (_, source) => !_closing && _autoCopy && ReferenceEquals(_service, source),
             (_, _, _) => { });
         _textSync.SelectDevice("lan-transfer");
         Title = L("TransferTitle");
         Width = 690; Height = 810; MinWidth = 480; MinHeight = 440;
-        WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        ShowInTaskbar = true;
         SetResourceReference(BackgroundProperty, "BackgroundBrush");
         SetResourceReference(ForegroundProperty, "TextBrush");
         var panel = new StackPanel { Margin = new Thickness(22) };

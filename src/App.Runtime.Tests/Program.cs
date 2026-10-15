@@ -509,7 +509,7 @@ internal static partial class Program
         }
         else if (surface.Equals("transfer", StringComparison.OrdinalIgnoreCase))
         {
-            window = new IPhoneMirror.App.Windows.TransferWindow(null);
+            window = new IPhoneMirror.App.Windows.TransferWindow();
         }
         else if (surface.Equals("child", StringComparison.OrdinalIgnoreCase))
         {
