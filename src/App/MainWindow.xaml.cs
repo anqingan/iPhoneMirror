@@ -2536,6 +2536,11 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
         if (Application.Current is not App { IsSystemSessionEnding: true } &&
             _mappingWindow?.TryCloseEditor(Close) == false) return;
         _shutdownStarted = true;
+        if (_transferWindow is { } transfer)
+        {
+            await transfer.StopAsync();
+            transfer.Close();
+        }
         await ShutdownAutomationAsync();
         DisposeKeyboardInputSubscriptions();
         DisposeKeyboardMapping();
@@ -4943,6 +4948,9 @@ public partial class MainWindow : Wpf.Ui.Controls.FluentWindow
                 break;
             case "text-input":
                 TextInputWindow.ShowDeveloperPreview(this);
+                break;
+            case "transfer":
+                OnTransferClick(this, new RoutedEventArgs());
                 break;
             case "device-binding":
                 DeviceBindingWindow.ShowDeveloperPreview(this, _viewModel);

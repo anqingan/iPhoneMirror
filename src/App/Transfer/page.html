@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>iPhoneMirror Transfer</title><link rel="stylesheet" href="/app.css"><script src="/app.js" defer></script></head>
+<body><main><h1>iPhoneMirror</h1><p id="intro">文字、图片与文件传输</p>
+<section id="login"><label for="code" id="codeLabel">输入电脑显示的六位连接码</label><input id="code" inputmode="numeric" autocomplete="off" maxlength="6"><button id="connect">连接</button></section>
+<div id="content" hidden>
+<section><h2 id="sendTitle">发送到电脑</h2><label for="sendText" id="pasteLabel">在这里粘贴 iPad 复制的文字</label><textarea id="sendText" rows="5" maxlength="1048576"></textarea><button id="send">发送文字</button><label for="files" id="filesLabel">选择图片或文件（单个不超过 512 MB）</label><input id="files" type="file" multiple><button id="upload">上传所选文件</button></section>
+<section><h2 id="receiveTitle">从电脑接收</h2><button id="refresh">刷新</button><textarea id="receiveText" rows="5" readonly></textarea><button id="copy">复制文字</button><ul id="downloads"></ul></section>
+</div><p id="status" role="status" aria-live="polite"></p><footer id="footer">传输在局域网内进行。电脑关闭传输窗口后，连接即失效。</footer></main></body></html>

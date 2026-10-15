@@ -41,6 +41,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Transfer\*" LogicalName="IPhoneMirror.Transfer.%(Filename)%(Extension)" />
     <EmbeddedResource Include="..\..\config\uxplay-component.json"
                       LogicalName="IPhoneMirror.App.Components.UxPlay.json" />
     <EmbeddedResource Include="native\components\ffmpeg.sha256"

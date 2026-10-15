@@ -22,6 +22,7 @@ frame 格式:
 from __future__ import annotations
 
 import argparse
+from html.parser import HTMLParser
 import asyncio
 import contextlib
 from concurrent.futures import ThreadPoolExecutor, wait
@@ -551,6 +552,58 @@ REMOTE_PAIRING_DISCOVERY_TIMEOUT_SECONDS = 15
 REMOTE_PAIRING_DISCOVERY_GRACE_SECONDS = 12
 
 
+class _PasteboardHtmlText(HTMLParser):
+    """Extract primary rich text without fetching its promised alternatives."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+        self.hidden = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ('script', 'style', 'head'):
+            self.hidden += 1
+        elif not self.hidden and tag in ('br', 'p', 'div', 'li', 'tr', 'h1', 'h2', 'h3'):
+            self.parts.append('\n')
+
+    def handle_endtag(self, tag):
+        if tag in ('script', 'style', 'head'):
+            self.hidden = max(0, self.hidden - 1)
+        elif not self.hidden and tag in ('p', 'div', 'li', 'tr', 'h1', 'h2', 'h3'):
+            if self.parts and not self.parts[-1].endswith('\n'):
+                self.parts.append('\n')
+
+    def handle_data(self, data):
+        if not self.hidden:
+            self.parts.append(data)
+
+
+def _pasteboard_rich_text(items) -> Optional[str]:
+    for item in items:
+        data = item.get('data') or {}
+        for uti in ('public.html', 'com.apple.webarchive'):
+            datum = data.get(uti) or {}
+            raw = datum.get('data') if isinstance(datum, dict) else None
+            if not isinstance(raw, (bytes, bytearray, str)) or len(raw) > 4 * 1024 * 1024:
+                continue
+            try:
+                if uti == 'com.apple.webarchive':
+                    resource = plistlib.loads(raw).get('WebMainResource', {})
+                    if resource.get('WebResourceMIMEType', 'text/html') != 'text/html':
+                        continue
+                    raw = resource.get('WebResourceData', b'')
+                if isinstance(raw, (bytes, bytearray)):
+                    raw = raw.decode('utf-8-sig')
+                parser = _PasteboardHtmlText()
+                parser.feed(raw)
+                text = ''.join(parser.parts).strip('\n')
+                if text.strip():
+                    return text
+            except (ValueError, TypeError, AttributeError, UnicodeDecodeError, ExpatError):
+                continue
+    return None
+
+
 def _pasteboard_snapshot_text(snapshot: dict) -> tuple[Optional[str], bool]:
     """Read inline text, and distinguish promised text from an empty board."""
     representations = (
@@ -585,7 +638,11 @@ def _pasteboard_snapshot_text(snapshot: dict) -> tuple[Optional[str], bool]:
                 return raw.decode(encoding), False
             except UnicodeDecodeError:
                 continue
-    return None, unresolved
+    # Notes and Safari can expose HTML/webarchive immediately while promising
+    # plain text. Asking for allResolved may block dtpasteboardd for a minute
+    # on an unrelated RTF representation, even after our request times out.
+    text = _pasteboard_rich_text(board.get('items', []) or [])
+    return (text, False) if text is not None else (None, unresolved)
 
 
 def local_personalized_ddi_bundle(ddi_dir: Path) -> tuple[Path, Path, Path]:

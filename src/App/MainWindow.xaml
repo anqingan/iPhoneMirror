@@ -1185,6 +1185,11 @@
                                     <TextBlock Text="{DynamicResource SeparateWindow}" Margin="6,0,0,0"/>
                                 </StackPanel>
                             </Button>
+                            <Button x:Name="QuickTransferButton" Click="OnTransferClick"
+                                    Style="{StaticResource PreviewToolButton}"
+                                    Content="{DynamicResource TransferTitle}"
+                                    ToolTip="{DynamicResource TransferHint}"
+                                    AutomationProperties.AutomationId="QuickTransferButton"/>
                             <Button x:Name="QuickScreenshotButton" Click="OnScreenshotClick"
                                     Style="{StaticResource PreviewToolButton}"
                                     IsEnabled="{Binding CanUseVisualPreviewTools}"

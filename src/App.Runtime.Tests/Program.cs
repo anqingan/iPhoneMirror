@@ -28,6 +28,8 @@ internal static partial class Program
     {
         try
         {
+            if (args is ["--lan-transfer"])
+                return RunLanTransferTests();
             if (args is ["--ipad-control-regressions"])
                 return RunIpadControlRegressions();
             if (args is ["--device-control-live", var liveBridge, var liveUdid, var liveMode])
@@ -258,6 +260,7 @@ internal static partial class Program
                 return RunUiPreview(themeName, surface);
             if (args.Length != 0)
                 throw new ArgumentException("Unknown runtime test arguments: " + string.Join(" ", args));
+            RunLanTransferTests();
             RunAutomationApiTests();
             // Use deterministic WPF rendering; native preview checks still use their real HWNDs.
             RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
@@ -504,6 +507,10 @@ internal static partial class Program
                 typeof(RoutedEventHandler), main, loaded);
             window = main;
         }
+        else if (surface.Equals("transfer", StringComparison.OrdinalIgnoreCase))
+        {
+            window = new IPhoneMirror.App.Windows.TransferWindow(null);
+        }
         else if (surface.Equals("child", StringComparison.OrdinalIgnoreCase))
         {
             window = new IPhoneMirror.App.Windows.AdvancedSettingsWindow(
@@ -517,7 +524,7 @@ internal static partial class Program
         }
         else
         {
-            throw new ArgumentException("UI preview surface must be main, child or setup.");
+            throw new ArgumentException("UI preview surface must be main, child, transfer or setup.");
         }
 
         window.Title = $"iPhoneMirror UI Audit — {theme} — {surface}";
@@ -526,7 +533,8 @@ internal static partial class Program
         {
             application.Shutdown();
             // This preview uses Dispatcher.Run rather than Application.Run.
-            if (surface.Equals("setup", StringComparison.OrdinalIgnoreCase))
+            if (surface.Equals("setup", StringComparison.OrdinalIgnoreCase) ||
+                surface.Equals("transfer", StringComparison.OrdinalIgnoreCase))
                 application.Dispatcher.BeginInvokeShutdown(DispatcherPriority.Background);
         };
         window.Show();

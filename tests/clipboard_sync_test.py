@@ -261,7 +261,7 @@ class ClipboardTests(unittest.IsolatedAsyncioTestCase):
                                  {'data': 'resolved 中文'.encode('utf-8')})
                         return {'pasteboard': {'items': [{
                             'types': ['public.html', 'public.utf8-plain-text'],
-                            'data': {'public.html': {'data': b'<p>rich text</p>'},
+                            'data': {'public.html': {'isPromised': True},
                                      'public.utf8-plain-text': datum},
                         }]}}
 
@@ -274,6 +274,40 @@ class ClipboardTests(unittest.IsolatedAsyncioTestCase):
                         self.assertEqual('resolved 中文', await session._read_device_pasteboard())
                 self.assertEqual([{'promiseSecondary': {}}, {'allResolved': {}}], policies)
                 self.assertTrue(all(connection.closed for connection in connections))
+
+    async def test_primary_html_supplies_text_without_resolving_promised_alternatives(self):
+        session = self.session()
+        policies = []
+
+        class RichPasteboard(Pasteboard):
+            async def get(self, data_policy=None):
+                policies.append(data_policy)
+                return {'pasteboard': {'items': [{
+                    'types': ['public.html', 'public.utf8-plain-text', 'public.rtf'],
+                    'data': {'public.html': {'data': '<html><head><style>hidden</style></head><body><p>中文 &amp; café</p><p>第二行 😀</p><script>never visible</script></body></html>'.encode()},
+                             'public.utf8-plain-text': {'isPromised': True},
+                             'public.rtf': {'isPromised': True}},
+                }]}}
+
+        with patch.object(bridge, 'PasteboardService', RichPasteboard):
+            text = await session._read_device_pasteboard()
+        self.assertIn('中文 & café', text)
+        self.assertIn('第二行 😀', text)
+        self.assertNotIn('hidden', text)
+        self.assertNotIn('never visible', text)
+        self.assertEqual([{'promiseSecondary': {}}], policies)
+
+    def test_primary_webarchive_and_plain_text_precedence(self):
+        archive = bridge.plistlib.dumps({'WebMainResource': {
+            'WebResourceMIMEType': 'text/html', 'WebResourceData': b'<p>archive text</p>'}})
+        snapshot = {'items': [{'data': {'com.apple.webarchive': {'data': archive}},
+                              'types': ['com.apple.webarchive', 'public.utf8-plain-text']}]}
+        self.assertEqual(('archive text', False), bridge._pasteboard_snapshot_text(snapshot))
+        snapshot['items'][0]['data']['public.utf8-plain-text'] = {'data': b'exact plain text'}
+        self.assertEqual(('exact plain text', False), bridge._pasteboard_snapshot_text(snapshot))
+        snapshot['items'][0]['data'].pop('public.utf8-plain-text')
+        snapshot['items'][0]['data']['com.apple.webarchive'] = {'data': b'not a plist'}
+        self.assertEqual((None, True), bridge._pasteboard_snapshot_text(snapshot))
 
     async def test_promised_text_fallback_shares_the_read_timeout(self):
         session = self.session()
